@@ -32,11 +32,15 @@ void main() {
 
     test('round-trips a payload frame through FrameParser', () {
       final payload = Uint8List.fromList(List.generate(300, (i) => i & 0xFF));
-      final frames = FrameParser().feed(encodeFrame(IciclesMessageType.displayView, payload));
+      final frames = FrameParser(maxPayload: payload.length).feed(encodeFrame(IciclesMessageType.displayView, payload));
       expect(frames, hasLength(1));
       expect(frames.single.version, serialProtocolVersion);
       expect(frames.single.type, IciclesMessageType.displayView.value);
       expect(frames.single.payload, payload);
+    });
+
+    test('rejects payloads that overflow the u16 length field', () {
+      expect(() => encodeFrame(IciclesMessageType.displayView, Uint8List(0x10000)), throwsArgumentError);
     });
   });
 
@@ -85,6 +89,15 @@ void main() {
       ]));
       expect(frames, hasLength(1));
       expect(frames.single.type, IciclesMessageType.info.value);
+    });
+
+    test('does not hold back frames behind a false magic with a plausible length', () {
+      final frames = FrameParser().feed(Uint8List.fromList([
+        0xA5, 0x1C, 0x01, 0x01, 0x00, 0x04, // bogus header claiming a 1 KB payload
+        ...ackFrame,
+      ]));
+      expect(frames, hasLength(1));
+      expect(frames.single.type, IciclesMessageType.ack.value);
     });
 
     test('recovers a frame that starts inside a CRC-invalid bogus frame', () {

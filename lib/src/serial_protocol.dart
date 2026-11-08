@@ -60,6 +60,7 @@ int crc16(Uint8List data, [int start = 0, int? end]) {
 
 Uint8List encodeFrame(IciclesMessageType type, [Uint8List? payload]) {
   final length = payload?.length ?? 0;
+  if (length > 0xFFFF) throw ArgumentError('Payload must be at most 65535 bytes, got $length');
   final frame = Uint8List(serialHeaderLength + length + serialCrcLength);
   frame[0] = serialMagic0;
   frame[1] = serialMagic1;
@@ -133,10 +134,11 @@ class DeviceInfo {
 /// device log text spliced between reply frames) byte by byte, so one bad
 /// frame never shifts alignment.
 class FrameParser {
-  FrameParser({this.maxPayload = 2048});
+  FrameParser({this.maxPayload = 16});
 
   /// Garbage-rejection bound for the length field, not a real protocol limit;
-  /// frames the host receives are at most 7 payload bytes.
+  /// frames the host receives are at most 7 payload bytes. Kept small so a
+  /// false magic in garbage holds back at most a few real frames.
   final int maxPayload;
 
   Uint8List _buf = Uint8List(0);

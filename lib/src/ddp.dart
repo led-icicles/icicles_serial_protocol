@@ -7,9 +7,10 @@ import 'package:icicles_animation_dart/icicles_animation_dart.dart';
 ///
 /// Channel space expected by the device: grid RGB in row-major order
 /// (x across, y down - the firmware indexer maps this to the physical
-/// strip), then one RGB triplet per radio panel. The receiver clamps
-/// out-of-range data, so a frame sized from the animation is safe even when
-/// the device dimensions differ.
+/// strip), then one RGB triplet per radio panel. The receiver splits rows by
+/// its own xCount and reads panels after its own grid, so the animation
+/// dimensions must match the device; out-of-range data is clamped, never
+/// overrun.
 
 const int ddpDefaultPort = 4048;
 const int ddpHeaderLength = 10;
@@ -21,7 +22,7 @@ const int _ddpDefaultDisplayId = 0x01;
 
 /// Flattens [view] into the DDP channel layout: grid pixels as R,G,B in
 /// row-major order (the view's pixels are column-major, `x * yCount + y`,
-/// so this transposes), then panel slots `1..radioPanels.length` matched
+/// so this transposes), then panel slots `1..radioPanelsCount` matched
 /// by the 1-based panel index (missing slot stays black), one color per
 /// panel — DDP has a flat channel space, so per-LED panel colors cannot
 /// be carried.
@@ -29,13 +30,13 @@ Uint8List encodeDdpFrame(
   AnimationView view, {
   required int xCount,
   required int yCount,
+  required int radioPanelsCount,
 }) {
   final pixels = view.frame.pixels;
   final gridPixels = xCount * yCount;
   assert(pixels.length == gridPixels,
       'view has ${pixels.length} pixels but grid is ${xCount}x$yCount');
-  final panelCount = view.radioPanels.length;
-  final frame = Uint8List(gridPixels * 3 + panelCount * 3);
+  final frame = Uint8List(gridPixels * 3 + radioPanelsCount * 3);
 
   for (var y = 0; y < yCount; y++) {
     for (var x = 0; x < xCount; x++) {
@@ -49,12 +50,10 @@ Uint8List encodeDdpFrame(
     }
   }
 
-  final panelsByIndex = {for (final panel in view.radioPanels) panel.index: panel};
-  for (var slot = 1; slot <= panelCount; slot++) {
-    final panel = panelsByIndex[slot];
-    if (panel == null) continue;
+  for (final panel in view.radioPanels) {
+    if (panel.index < 1 || panel.index > radioPanelsCount) continue;
     final color = panel.colors.first;
-    final offset = gridPixels * 3 + (slot - 1) * 3;
+    final offset = gridPixels * 3 + (panel.index - 1) * 3;
     frame[offset] = color.red;
     frame[offset + 1] = color.green;
     frame[offset + 2] = color.blue;

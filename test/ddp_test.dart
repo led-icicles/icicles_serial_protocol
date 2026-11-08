@@ -25,6 +25,7 @@ void main() {
         ),
         xCount: 1,
         yCount: 2,
+        radioPanelsCount: 1,
       );
       expect(frame, [255, 0, 0, 0, 255, 0, 0, 0, 255]);
     });
@@ -36,6 +37,7 @@ void main() {
         view(const [red, green, blue, white]),
         xCount: 2,
         yCount: 2,
+        radioPanelsCount: 0,
       );
       // Row-major wire: row 0 = [red, blue], row 1 = [green, white].
       expect(frame, [255, 0, 0, 0, 0, 255, 0, 255, 0, 255, 255, 255]);
@@ -51,6 +53,7 @@ void main() {
         ),
         xCount: 1,
         yCount: 1,
+        radioPanelsCount: 1,
       );
       expect(frame.sublist(3), [0, 255, 0]);
     });
@@ -66,8 +69,24 @@ void main() {
         ),
         xCount: 1,
         yCount: 1,
+        radioPanelsCount: 2,
       );
       expect(frame.sublist(3), [0, 0, 0, 0, 0, 255]);
+    });
+
+    test('sizes panel slots from radioPanelsCount, not the view panel list', () {
+      final frame = encodeDdpFrame(
+        view(
+          [red],
+          [
+            RadioPanelView(3, const [blue])
+          ],
+        ),
+        xCount: 1,
+        yCount: 1,
+        radioPanelsCount: 3,
+      );
+      expect(frame.sublist(3), [0, 0, 0, 0, 0, 0, 0, 0, 255]);
     });
   });
 
