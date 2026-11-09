@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Depends on _icicles_animation_dart_ `v3.1.0`.
+
 ## 0.2.1
 
 - Depends on _icicles_animation_dart_ `v3.0.0`.
